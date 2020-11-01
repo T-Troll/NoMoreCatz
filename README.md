@@ -1,0 +1,2 @@
+# NoMoreCatz
+AI Chromium plugin
