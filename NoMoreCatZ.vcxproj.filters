@@ -19,4 +19,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Tensorflow2\lib\tensorflow.dll" />
+  </ItemGroup>
 </Project>

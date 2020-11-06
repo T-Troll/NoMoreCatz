@@ -5,3 +5,6 @@
 /.vs
 /NoMoreCatZ/Debug
 /Debug
+/Model
+/Tensorflow2/lib/tensorflow.dll
+/x64/Debug
