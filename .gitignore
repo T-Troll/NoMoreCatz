@@ -8,3 +8,7 @@
 /Model
 /Tensorflow2/lib/tensorflow.dll
 /x64/Debug
+/OpenCV/bin
+/Release
+/Tensorflow2/lib/GPU/tensorflow.dll
+/x64/Release

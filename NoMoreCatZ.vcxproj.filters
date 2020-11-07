@@ -20,6 +20,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Tensorflow2\lib\tensorflow.dll" />
+    <CopyFileToFolders Include="Tensorflow2\lib\tensorflow.dll" />
+    <CopyFileToFolders Include="OpenCV\bin\opencv_world343d.dll" />
   </ItemGroup>
 </Project>
