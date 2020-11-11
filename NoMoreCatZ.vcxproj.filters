@@ -19,8 +19,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="Tensorflow2\lib\tensorflow.dll" />
-    <CopyFileToFolders Include="OpenCV\bin\opencv_world343d.dll" />
-  </ItemGroup>
 </Project>
