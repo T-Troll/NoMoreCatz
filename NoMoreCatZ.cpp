@@ -45,10 +45,11 @@ using namespace cv;
 
 void NoOpDeallocator(void* data, size_t a, void* b) {}
 
-BYTE* ParseJson(char* json, unsigned *width, unsigned* height) {
+BYTE* ParseJson(char* json, unsigned *width, unsigned* height, unsigned *type) {
     BYTE* res = NULL;
     // Get height and width
-    sscanf_s(json, "{\"width\":%d,\"height\":%d,", width, height);
+    sscanf_s(json, "{\"type\":%d,\"width\":%d,\"height\":%d,", type, width, height);
+    cerr << "Data: " << *type << ", " << *width << ", " << *height << endl;
     // allocate buffer
     res = (BYTE*)malloc((*width) * (*height) * 4);
     // copy data to buffer
@@ -73,20 +74,34 @@ BYTE* ParseJson(char* json, unsigned *width, unsigned* height) {
 int main(int argc, char* argv[])
 {
     _setmode(_fileno(stdin), _O_BINARY);
-    cerr << "NoMoreCatZ v0.1.0\n";
+    cerr << "NoMoreCatZ v0.2.0\n";
     //cout << "Tensorflow " << TF_Version() << endl;
     if (argc < 2) {
         cout << "Usage:" << endl
-            << "NoMoreCatz -register\t\t- Register app for Chrome" << endl
-            << "NoMoreCatz <path to image file>\t- Process image and type results" << endl;
+            << "NoMoreCatz -register [id]\t- Register app for Chrome" << endl
+            << "Don't forget to get plugin ID from Chrome!" << endl;
     }
     else {
         string url = argv[1];
-        string manp1 = "{ \"name\": \"com.ttroll.nomorecatz\",\n\"version\" : \"0.2\",\n\"description\" : \"This extension block images with cats using host-based AI\",\n\"path\" : \"",
+        string cpid;
+        if (argc >= 3)
+            cpid = argv[2];
+        string manp2;        
+        string manp1 = "{ \"name\": \"com.ttroll.nomorecatz\",\n\"version\" : \"0.2\",\n\"description\" : \"This extension block images with cats using host-based AI\",\n\"path\" : \"";
+        if (cpid == "")
             manp2 = "\",\n\"type\": \"stdio\",\n\"allowed_origins\" : [ \"chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/\" ] ,\n\"manifest_version\" : 2\n}";
+        else
+            manp2 = "\",\n\"type\": \"stdio\",\n\"allowed_origins\" : [ \"chrome-extension://" + cpid + "/\" ] ,\n\"manifest_version\" : 2\n}";
         //cout << "URL: " << url << endl;
         if (url == "-register") {
             // add to registry
+            string manp2;
+            string manp1 = "{ \"name\": \"com.ttroll.nomorecatz\",\n\"version\" : \"0.2\",\n\"description\" : \"This extension block images with cats using host-based AI\",\n\"path\" : \"";
+            if (cpid == "")
+                manp2 = "\",\n\"type\": \"stdio\",\n\"allowed_origins\" : [ \"chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/\" ] ,\n\"manifest_version\" : 2\n}";
+            else
+                manp2 = "\",\n\"type\": \"stdio\",\n\"allowed_origins\" : [ \"chrome-extension://" + cpid + "/\" ] ,\n\"manifest_version\" : 2\n}";
+
             cout << "Registering plugin..." << endl;
             DWORD dwDisposition;
             HKEY hKey1 = NULL;
@@ -203,34 +218,54 @@ int main(int argc, char* argv[])
         TF_Tensor** OutputValues = (TF_Tensor**)malloc(sizeof(TF_Tensor*) * NumOutputs);
 
 #endif
-        unsigned msgsize, width = 0, height = 0;
+        unsigned msgsize, width = 0, height = 0, type = -1;
         DWORD dwRet;
         //while (true) {
         _read(0, &msgsize, 4);
         char* msgbuffer = (char*)malloc(msgsize);
         _read(0, msgbuffer, msgsize);
-        BYTE* imgbuf = ParseJson(msgbuffer, &width, &height);
-        //_write(1, &msgsize, 4);
-        //_write(1, msgbuffer, msgsize);
-        /*HANDLE hFile = CreateFile("c:\\temp\\message.dmp", // Filename
+        BYTE* imgbuf = ParseJson(msgbuffer, &width, &height, &type);
+        
+        /*HANDLE sFile = CreateFile("c:\\temp\\message.json", // Filename
             GENERIC_WRITE,    // Desired access
             FILE_SHARE_WRITE, // Share flags
             NULL,             // Security Attributes
             CREATE_ALWAYS,      // Creation Disposition
             0,                // Flags and Attributes
             NULL);
-        WriteFile(hFile,              // Handle
+        WriteFile(sFile,              // Handle
+            &msgsize, // Data to be written
+            4,                 // Size of data, in bytes
+            &dwRet,             // Number of bytes written
+            NULL);
+        WriteFile(sFile,              // Handle
+            msgbuffer, // Data to be written
+            msgsize,                 // Size of data, in bytes
+            &dwRet,             // Number of bytes written
+            NULL);             // OVERLAPPED pointer
+        CloseHandle(sFile);*/
+        /*sFile = CreateFile("c:\\temp\\message.bin", // Filename
+            GENERIC_WRITE,    // Desired access
+            FILE_SHARE_WRITE, // Share flags
+            NULL,             // Security Attributes
+            CREATE_ALWAYS,      // Creation Disposition
+            0,                // Flags and Attributes
+            NULL);
+        WriteFile(sFile,              // Handle
             imgbuf, // Data to be written
             width*height*4,                 // Size of data, in bytes
             &dwRet,             // Number of bytes written
-            NULL);             // OVERLAPPED pointer
-        CloseHandle(hFile);*/
-
-        Mat* img = new Mat(height, width, CV_8UC4, imgbuf), tim;
+            NULL);*/
+        char buffer2[8192];
+        sprintf_s(buffer2, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, width, height);
+        int outsize2 = strlen(buffer2);
+        //_write(1, &outsize2, 4);
+        //_write(1, buffer2, outsize2);
+        Mat img(height, width, CV_8UC4, imgbuf), tim;
         free(msgbuffer);
-        free(imgbuf);
         Mat dstp, dst;
-        cvtColor(*img, dstp, CV_RGBA2RGB);
+        cvtColor(img, dstp, CV_RGBA2RGB);
+        //imwrite("c:\\temp\\testimg.png", dstp);
         //float rcratio = (float)*img.cols / *img.rows;
         /*if (img.cols > img.rows)
             resize(dstp, dstp, Size(320, 320 / rcratio));
@@ -238,22 +273,30 @@ int main(int argc, char* argv[])
             resize(dstp, dstp, Size(320 * rcratio, 320));
         if (rcratio != 1.0f)
             copyMakeBorder(dstp, dstp, 0, 320 - dstp.rows, 0, 320-dstp.cols, BORDER_CONSTANT, 0);*/
-        cv::resize(dstp, dstp, Size(320, 320));
-        dstp.convertTo(dst, CV_32FC3);// , 1, -127.5f);
+        cv::resize(dstp, dst, Size(320, 320));
+        dst.convertTo(dst, CV_32FC3);// , 1, -127.5f);
+        //imwrite("c:\\temp\\testimg_tf.png", dst);
         cv::normalize(dst, dst, -1.0f, 1.0f, NORM_MINMAX);
-        int ndata = 3 * dst.cols * dst.rows *sizeof(float);
+        
+        int ndata = 3 * dst.cols * dst.rows * sizeof(float);
         int ndims = 4;
         int dims[] = { 1,dst.rows,dst.cols,3 };
+        sprintf_s(buffer2, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, img.cols, img.rows);
+        outsize2 = strlen(buffer2);
+        //_write(1, &outsize2, 4);
+        //_write(1, buffer2, outsize2);
+
 #ifdef _TFLITE
         //TfLiteInterpreterAllocateTensors(interpreter);
         //TfLiteInterpreterResizeInputTensor(interpreter, 0, dims, ndims);
         TfLiteInterpreterAllocateTensors(interpreter);
+
         TfLiteTensor* input_tensor =
             TfLiteInterpreterGetInputTensor(interpreter, 0);
-        cerr << TfLiteTensorCopyFromBuffer(input_tensor, dst.ptr(), 
-            ndata) << endl;
-  
-        cerr << TfLiteInterpreterInvoke(interpreter) << endl;
+        TfLiteTensorCopyFromBuffer(input_tensor, dst.ptr(), 
+            ndata);
+
+        TfLiteInterpreterInvoke(interpreter);
 
         int oCount = TfLiteInterpreterGetOutputTensorCount(interpreter);
 
@@ -270,7 +313,7 @@ int main(int argc, char* argv[])
         scores = (float*)TfLiteTensorData(output_tensor[2]);
         types = (float*)TfLiteTensorData(output_tensor[1]);
         boxes = (float*)TfLiteTensorData(output_tensor[0]);
-        
+
 #else
         TF_Tensor* int_tensor = TF_NewTensor(TF_UINT8, dims, ndims, dst.ptr(), ndata, &NoOpDeallocator, 0);
         //TF_Tensor* int_tensor = TF_NewTensor(TF_UINT8, dims, ndims, dst->imageData, dst->imageSize, &NoOpDeallocator, 0);
@@ -301,17 +344,27 @@ int main(int argc, char* argv[])
         float* scores = (float*)TF_TensorData(OutputValues[4]);
 
 #endif 
-
+        free(imgbuf);
         char buffer[8192];
-        sprintf_s(buffer, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d, \"result\": {\n", msgsize, width, height);
+        //sprintf_s(buffer3, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, img.cols, img.rows);
+        sprintf_s(buffer, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d ,\"result\":", msgsize, width, height);
         int outsize = strlen(buffer);
         
-        char tid[256];
+        //char tid[256];
         string outmessage = buffer;
+        //outsize = outmessage.length();
+        //cerr << "Output size: " << outsize << endl;
+        //_write(1, &outsize, 4);
+        //_write(1, buffer3, outsize);
+        int finResult = 0;
+        //Sleep(200);
+        //cerr << numDetections << endl;
         for (int i = 0; i < numDetections; i++)
             if (scores[i] > 0.4) {
-                sprintf_s(buffer, 2047, "\"score%d\":%d,", i, (int) types[i]);
-                outmessage += buffer;
+                if ((int)types[i] == type)
+                    finResult = 1;
+                //sprintf_s(buffer, 2047, "%d,", (int) types[i]);
+                //outmessage += buffer;
                 /*printf("Type %f - Score %f\n", types[i], scores[i]);
                 printf("  Box: %f,%f - %f,%f\n", boxes[i * 4], boxes[i * 4 + 1], 
                     boxes[i * 4 + 2], boxes[i * 4 + 3]);
@@ -322,10 +375,12 @@ int main(int argc, char* argv[])
                 putText(img, tid, Point(boxes[i * 4 + 1] * img.cols, boxes[i * 4] * img.rows), FONT_HERSHEY_COMPLEX_SMALL,
                     1, Scalar(0,0,255));*/
             }
-            else break; 
-        outmessage += "\"total\":0}}\n}";
+            else break;
+        sprintf_s(buffer, 2047, "%d}", finResult);
+        outmessage += buffer;
         outsize = outmessage.length();
-        HANDLE hFile = CreateFile("c:\\temp\\message.dmp", // Filename
+        cerr << "Result: " << finResult << endl;
+       /* HANDLE hFile = CreateFile("c:\\temp\\message.out.json", // Filename
             GENERIC_WRITE,    // Desired access
             FILE_SHARE_WRITE, // Share flags
             NULL,             // Security Attributes
@@ -337,7 +392,7 @@ int main(int argc, char* argv[])
             outsize,                 // Size of data, in bytes
             &dwRet,             // Number of bytes written
             NULL);             // OVERLAPPED pointer
-        CloseHandle(hFile);
+        CloseHandle(hFile);*/
         _write(1, &outsize, 4);
         _write(1, outmessage.c_str(), outsize);
         //cvtColor(dst, img, CV_RGB2BGR);

@@ -3,6 +3,6 @@
 "description" : "This extension block images with cats using host-based AI",
 "path" : "c:/work/devstudio/nomorecatz/x64/debug/nomorecatz.exe",
 "type": "stdio",
-"allowed_origins" : [ "chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/" ] ,
+"allowed_origins" : [ "chrome-extension://123/" ] ,
 "manifest_version" : 2
 }

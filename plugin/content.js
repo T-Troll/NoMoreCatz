@@ -9,9 +9,12 @@ const setImageTitles = () => {
     for (i = 0; i < images.length; i++) {
       var img = images[i];
       if (img.src === meta.url) {
-        img.title = img.src + `:\n\n${img.title}\n\n` + JSON.stringify(meta.predictions);
+       if (meta.result == 1) {
+        img.title = "Blocked by NoMoreCatZ";//img.src + `:\n\n${img.title}\n\n` + JSON.stringify(meta.predictions);
+        img.src = meta.predictions;
         delete keys[u];
         delete imageMeta[url];
+       }
       }
     }
   }
