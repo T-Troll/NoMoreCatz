@@ -1,0 +1,11 @@
+{
+    "name": "com.ttroll.nomorecatz",
+    "version": "0.2",
+    "description": "This extension block images with cats using host-based AI",
+    "path": "C:\\Program Files\\My Application\\chrome_native_messaging_host.exe",
+    "type": "stdio",
+    "allowed_origins": [
+      "chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/"
+    ],
+    "manifest_version": 2
+}

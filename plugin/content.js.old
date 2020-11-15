@@ -1,0 +1,22 @@
+function isMissing(line) {
+  alert(line);
+  return !!(line.match(/^[^ ]* 404/));
+}
+
+chrome.webRequest.onHeadersReceived.addListener(
+  function(details) {
+    if(isMissing(details.statusLine)) {
+      var fixedURL;
+      /* TODO: Assign fixedURL based on details.url */
+      // If the image is in the extension, use
+      //   chrome.runtime.getURL("filename.jpg")
+      return {redirectUrl: fixedURL};
+    }
+  },
+  {
+    // Tailor this filter for your site
+    urls: ["*://*.yandex.ru/*"],
+    types: ["image"]
+  },
+  ["blocking"]
+);

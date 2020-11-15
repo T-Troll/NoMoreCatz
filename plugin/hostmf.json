@@ -1,0 +1,8 @@
+{ "name": "com.ttroll.nomorecatz",
+"version" : "0.2",
+"description" : "This extension block images with cats using host-based AI",
+"path" : "c:/work/devstudio/nomorecatz/x64/debug/nomorecatz.exe",
+"type": "stdio",
+"allowed_origins" : [ "chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/" ] ,
+"manifest_version" : 2
+}

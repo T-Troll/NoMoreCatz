@@ -1,0 +1,29 @@
+{
+  "name": "NoMoreCatZ",
+  "version": "0.2",
+  "description": "This extension block images with cats using host-based AI",
+  "permissions": [
+    "activeTab",
+    "declarativeContent",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>",
+    "storage",
+    "nativeMessaging",
+    "tabs"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+    "manifest_version": 2
+}

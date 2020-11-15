@@ -5,10 +5,14 @@
 /.vs
 /NoMoreCatZ/Debug
 /Debug
-/Model
 /Tensorflow2/lib/tensorflow.dll
 /x64/Debug
 /OpenCV/bin
 /Release
 /Tensorflow2/lib/GPU/tensorflow.dll
 /x64/Release
+/Model/lite
+/Model/variables
+/Model/variables.old
+/Model/saved_model.pb.old
+/Model/saved_model.pb

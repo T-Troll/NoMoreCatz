@@ -5,6 +5,9 @@
 
 #include <iostream>
 #include <windows.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <io.h>
 #ifdef _TFLITE
 //#include "tensorflow/lite/c/c_api.h"
 //#include "tensorflow/lite/c/c_api_internal.h"
@@ -42,10 +45,35 @@ using namespace cv;
 
 void NoOpDeallocator(void* data, size_t a, void* b) {}
 
+BYTE* ParseJson(char* json, unsigned *width, unsigned* height) {
+    BYTE* res = NULL;
+    // Get height and width
+    sscanf_s(json, "{\"width\":%d,\"height\":%d,", width, height);
+    // allocate buffer
+    res = (BYTE*)malloc((*width) * (*height) * 4);
+    // copy data to buffer
+    int ind = 1, pos = 0, dpos = 0;
+    char buffer[4] = { 0,0,0,0 };
+    while (json[ind] != '{') ind++;
+    while (json[ind] != '}') {
+        switch (json[ind+1]) {
+        case ':': dpos = ind + 2; ind++; break; // start number
+        case ',': case '}': strncpy_s(buffer, json+dpos, ind+1-dpos);// end number
+            buffer[ind+1-dpos] = 0;
+            res[pos++] = atoi(buffer);
+            ind++;
+            break;
+        default: ind++;
+        }
+    }
+    return res;
+}
+
 
 int main(int argc, char* argv[])
 {
-    cout << "NoMoreCatZ v0.1.0\n";
+    _setmode(_fileno(stdin), _O_BINARY);
+    cerr << "NoMoreCatZ v0.1.0\n";
     //cout << "Tensorflow " << TF_Version() << endl;
     if (argc < 2) {
         cout << "Usage:" << endl
@@ -54,10 +82,12 @@ int main(int argc, char* argv[])
     }
     else {
         string url = argv[1];
+        string manp1 = "{ \"name\": \"com.ttroll.nomorecatz\",\n\"version\" : \"0.2\",\n\"description\" : \"This extension block images with cats using host-based AI\",\n\"path\" : \"",
+            manp2 = "\",\n\"type\": \"stdio\",\n\"allowed_origins\" : [ \"chrome-extension://ikkdkejghellfjlnjmfmllhklcgponce/\" ] ,\n\"manifest_version\" : 2\n}";
         //cout << "URL: " << url << endl;
         if (url == "-register") {
             // add to registry
-            cout << "Registering plugin...";
+            cout << "Registering plugin..." << endl;
             DWORD dwDisposition;
             HKEY hKey1 = NULL;
             RegCreateKeyEx(HKEY_CURRENT_USER,
@@ -70,31 +100,56 @@ int main(int argc, char* argv[])
                 &hKey1,
                 &dwDisposition);
             char pathBuffer[2048];
-            GetModuleFileNameA(NULL, pathBuffer, 2047);
             GetCurrentDirectoryA(2047, pathBuffer);
+            CharLowerA(pathBuffer);
             string pathMan(pathBuffer);
-            pathMan += "\\Plugin\\nomorecats.json";
+            pathMan += "\\Plugin\\hostmf.json";
+            GetModuleFileNameA(NULL, pathBuffer, 2047);
+            CharLowerA(pathBuffer);
+            string fullPath(pathBuffer);
+            for (int i = 0; i < fullPath.size(); i++) {
+                if (fullPath[i] == '\\') {
+                    fullPath[i] = '/';
+                }
+            }
+            cout << "Modifying " << pathMan << "...";
+            string manfull = manp1 + fullPath + manp2;
+            HANDLE hFile = CreateFile(pathMan.c_str(), // Filename
+                GENERIC_WRITE,    // Desired access
+                FILE_SHARE_WRITE, // Share flags
+                NULL,             // Security Attributes
+                CREATE_ALWAYS,      // Creation Disposition
+                0,                // Flags and Attributes
+                NULL);
+            if (hFile == INVALID_HANDLE_VALUE)
+            {
+                printf("Cannot open TestFile\n");
+                return 0;
+            }
+            else
+            {
+                DWORD dwRet;
+                WriteFile(hFile,              // Handle
+                    manfull.c_str(), // Data to be written
+                    manfull.length(),                 // Size of data, in bytes
+                    &dwRet,             // Number of bytes written
+                    NULL);             // OVERLAPPED pointer
+                CloseHandle(hFile);
+                hFile = INVALID_HANDLE_VALUE;
+            }
+            cout << " Done!" << endl << "Modifying Chrome settings...";
             RegSetValueExA(hKey1, "", 0, REG_SZ, (BYTE*)pathMan.c_str(), pathMan.size());
-            cout << " Done!" << endl;
+            cout << " Done!" << endl << "Plugin registered." << endl;
             return 1;
         }
 #ifdef _TFLITE
-        cout << "Tensorflow " << TfLiteVersion() << endl;
+        cerr << "Tensorflow " << TfLiteVersion() << endl;
         //********* Read model
-        TfLiteModel* model = TfLiteModelCreateFromFile("./model/lite/model.tflite");
+        TfLiteModel* model = TfLiteModelCreateFromFile("./model/model.tflite");
         TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
         TfLiteInterpreterOptionsSetNumThreads(options, 16);
 
         TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(model, options);
-        /*tflite::FlatBufferModel* model = NULL;// ("./linear.tflite", NULL);
-        model->BuildFromFile("./model/lite/model.tflite");
-
-        tflite::ops::builtin::BuiltinOpResolver resolver;
-        std::unique_ptr<tflite::Interpreter> interpreter;
-        tflite::InterpreterBuilder(*model, resolver)(&interpreter);
-
-        // Resize input tensors, if desired.
-        interpreter->AllocateTensors();*/
     
 #else
         cout << "Tensorflow " << TF_Version() << endl;
@@ -148,13 +203,35 @@ int main(int argc, char* argv[])
         TF_Tensor** OutputValues = (TF_Tensor**)malloc(sizeof(TF_Tensor*) * NumOutputs);
 
 #endif
-        Mat img = imread(url.c_str()), dstp, dst;
-        if (img.size == 0) {
-            cout << "Incorrect image file!" << endl;
-            return 0;
-        }
-        cvtColor(img, dstp, CV_BGR2RGB);
-        float rcratio = (float)img.cols / img.rows;
+        unsigned msgsize, width = 0, height = 0;
+        DWORD dwRet;
+        //while (true) {
+        _read(0, &msgsize, 4);
+        char* msgbuffer = (char*)malloc(msgsize);
+        _read(0, msgbuffer, msgsize);
+        BYTE* imgbuf = ParseJson(msgbuffer, &width, &height);
+        //_write(1, &msgsize, 4);
+        //_write(1, msgbuffer, msgsize);
+        /*HANDLE hFile = CreateFile("c:\\temp\\message.dmp", // Filename
+            GENERIC_WRITE,    // Desired access
+            FILE_SHARE_WRITE, // Share flags
+            NULL,             // Security Attributes
+            CREATE_ALWAYS,      // Creation Disposition
+            0,                // Flags and Attributes
+            NULL);
+        WriteFile(hFile,              // Handle
+            imgbuf, // Data to be written
+            width*height*4,                 // Size of data, in bytes
+            &dwRet,             // Number of bytes written
+            NULL);             // OVERLAPPED pointer
+        CloseHandle(hFile);*/
+
+        Mat* img = new Mat(height, width, CV_8UC4, imgbuf), tim;
+        free(msgbuffer);
+        free(imgbuf);
+        Mat dstp, dst;
+        cvtColor(*img, dstp, CV_RGBA2RGB);
+        //float rcratio = (float)*img.cols / *img.rows;
         /*if (img.cols > img.rows)
             resize(dstp, dstp, Size(320, 320 / rcratio));
         else
@@ -173,10 +250,10 @@ int main(int argc, char* argv[])
         TfLiteInterpreterAllocateTensors(interpreter);
         TfLiteTensor* input_tensor =
             TfLiteInterpreterGetInputTensor(interpreter, 0);
-        cout << TfLiteTensorCopyFromBuffer(input_tensor, dst.ptr(), 
+        cerr << TfLiteTensorCopyFromBuffer(input_tensor, dst.ptr(), 
             ndata) << endl;
   
-        cout << TfLiteInterpreterInvoke(interpreter) << endl;
+        cerr << TfLiteInterpreterInvoke(interpreter) << endl;
 
         int oCount = TfLiteInterpreterGetOutputTensorCount(interpreter);
 
@@ -225,11 +302,17 @@ int main(int argc, char* argv[])
 
 #endif 
 
-        printf("Detection results:\n");
+        char buffer[8192];
+        sprintf_s(buffer, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d, \"result\": {\n", msgsize, width, height);
+        int outsize = strlen(buffer);
+        
         char tid[256];
+        string outmessage = buffer;
         for (int i = 0; i < numDetections; i++)
             if (scores[i] > 0.4) {
-                printf("Type %f - Score %f\n", types[i], scores[i]);
+                sprintf_s(buffer, 2047, "\"score%d\":%d,", i, (int) types[i]);
+                outmessage += buffer;
+                /*printf("Type %f - Score %f\n", types[i], scores[i]);
                 printf("  Box: %f,%f - %f,%f\n", boxes[i * 4], boxes[i * 4 + 1], 
                     boxes[i * 4 + 2], boxes[i * 4 + 3]);
                 rectangle(img, Point(boxes[i * 4+1] * img.cols, boxes[i * 4] * img.rows),
@@ -237,16 +320,32 @@ int main(int argc, char* argv[])
                         Scalar(types[i]*2.8, 255 - types[i]*2.8, types[i] * 2.8), 2);
                 sprintf_s(tid, 255, "Type: %d", (int)types[i] + 1);
                 putText(img, tid, Point(boxes[i * 4 + 1] * img.cols, boxes[i * 4] * img.rows), FONT_HERSHEY_COMPLEX_SMALL,
-                    1, Scalar(0,0,255));
+                    1, Scalar(0,0,255));*/
             }
             else break; 
-
+        outmessage += "\"total\":0}}\n}";
+        outsize = outmessage.length();
+        HANDLE hFile = CreateFile("c:\\temp\\message.dmp", // Filename
+            GENERIC_WRITE,    // Desired access
+            FILE_SHARE_WRITE, // Share flags
+            NULL,             // Security Attributes
+            CREATE_ALWAYS,      // Creation Disposition
+            0,                // Flags and Attributes
+            NULL);
+        WriteFile(hFile,              // Handle
+            outmessage.c_str(), // Data to be written
+            outsize,                 // Size of data, in bytes
+            &dwRet,             // Number of bytes written
+            NULL);             // OVERLAPPED pointer
+        CloseHandle(hFile);
+        _write(1, &outsize, 4);
+        _write(1, outmessage.c_str(), outsize);
         //cvtColor(dst, img, CV_RGB2BGR);
-        string outname = url + ".out.png";
+        //string outname = url + ".out.png";
         //cvSaveImage(outname.c_str(), dst);
-        imwrite(outname.c_str(), img);
-        cvtColor(dst, dst, CV_RGB2BGR);
-        imwrite((url + ".dbg.png").c_str(), dst);
+        //imwrite(outname.c_str(), *img);
+        //cvtColor(dst, dst, CV_RGB2BGR);
+        //imwrite((url + ".dbg.png").c_str(), dst);
 
         // deinit
 #ifdef _TFLITE
