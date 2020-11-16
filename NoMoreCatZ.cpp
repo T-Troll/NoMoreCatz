@@ -45,10 +45,10 @@ using namespace cv;
 
 void NoOpDeallocator(void* data, size_t a, void* b) {}
 
-BYTE* ParseJson(char* json, unsigned *width, unsigned* height, unsigned *type) {
+BYTE* ParseJson(char* json, unsigned *width, unsigned* height, unsigned *type, float *cutLevel) {
     BYTE* res = NULL;
     // Get height and width
-    sscanf_s(json, "{\"type\":%d,\"width\":%d,\"height\":%d,", type, width, height);
+    sscanf_s(json, "{\"type\":%d,\"cut\":%f,\"width\":%d,\"height\":%d,", type, cutLevel, width, height);
     cerr << "Data: " << *type << ", " << *width << ", " << *height << endl;
     // allocate buffer
     res = (BYTE*)malloc((*width) * (*height) * 4);
@@ -74,7 +74,7 @@ BYTE* ParseJson(char* json, unsigned *width, unsigned* height, unsigned *type) {
 int main(int argc, char* argv[])
 {
     _setmode(_fileno(stdin), _O_BINARY);
-    cerr << "NoMoreCatZ v0.2.0\n";
+    cerr << "NoMoreCatZ v0.2.1\n";
     //cout << "Tensorflow " << TF_Version() << endl;
     if (argc < 2) {
         cout << "Usage:" << endl
@@ -219,12 +219,13 @@ int main(int argc, char* argv[])
 
 #endif
         unsigned msgsize, width = 0, height = 0, type = -1;
+        float cutLevel = 0.4;
         DWORD dwRet;
         //while (true) {
         _read(0, &msgsize, 4);
         char* msgbuffer = (char*)malloc(msgsize);
         _read(0, msgbuffer, msgsize);
-        BYTE* imgbuf = ParseJson(msgbuffer, &width, &height, &type);
+        BYTE* imgbuf = ParseJson(msgbuffer, &width, &height, &type, &cutLevel);
         
         /*HANDLE sFile = CreateFile("c:\\temp\\message.json", // Filename
             GENERIC_WRITE,    // Desired access
@@ -244,49 +245,30 @@ int main(int argc, char* argv[])
             &dwRet,             // Number of bytes written
             NULL);             // OVERLAPPED pointer
         CloseHandle(sFile);*/
-        /*sFile = CreateFile("c:\\temp\\message.bin", // Filename
-            GENERIC_WRITE,    // Desired access
-            FILE_SHARE_WRITE, // Share flags
-            NULL,             // Security Attributes
-            CREATE_ALWAYS,      // Creation Disposition
-            0,                // Flags and Attributes
-            NULL);
-        WriteFile(sFile,              // Handle
-            imgbuf, // Data to be written
-            width*height*4,                 // Size of data, in bytes
-            &dwRet,             // Number of bytes written
-            NULL);*/
-        char buffer2[8192];
-        sprintf_s(buffer2, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, width, height);
-        int outsize2 = strlen(buffer2);
-        //_write(1, &outsize2, 4);
-        //_write(1, buffer2, outsize2);
+
         Mat img(height, width, CV_8UC4, imgbuf), tim;
         free(msgbuffer);
         Mat dstp, dst;
         cvtColor(img, dstp, CV_RGBA2RGB);
         //imwrite("c:\\temp\\testimg.png", dstp);
-        //float rcratio = (float)*img.cols / *img.rows;
-        /*if (img.cols > img.rows)
+        /*float rcratio = (float)*img.cols / *img.rows;
+        if (img.cols > img.rows)
             resize(dstp, dstp, Size(320, 320 / rcratio));
         else
             resize(dstp, dstp, Size(320 * rcratio, 320));
         if (rcratio != 1.0f)
             copyMakeBorder(dstp, dstp, 0, 320 - dstp.rows, 0, 320-dstp.cols, BORDER_CONSTANT, 0);*/
-        cv::resize(dstp, dst, Size(320, 320));
-        dst.convertTo(dst, CV_32FC3);// , 1, -127.5f);
+        //cv::resize(dstp, dstp, Size(320, 320));
+        dstp.convertTo(dst, CV_32FC3);// , 1, -127.5f);
         //imwrite("c:\\temp\\testimg_tf.png", dst);
         cv::normalize(dst, dst, -1.0f, 1.0f, NORM_MINMAX);
         
         int ndata = 3 * dst.cols * dst.rows * sizeof(float);
         int ndims = 4;
         int dims[] = { 1,dst.rows,dst.cols,3 };
-        sprintf_s(buffer2, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, img.cols, img.rows);
-        outsize2 = strlen(buffer2);
-        //_write(1, &outsize2, 4);
-        //_write(1, buffer2, outsize2);
 
 #ifdef _TFLITE
+        // Will need it later for RCNN
         //TfLiteInterpreterAllocateTensors(interpreter);
         //TfLiteInterpreterResizeInputTensor(interpreter, 0, dims, ndims);
         TfLiteInterpreterAllocateTensors(interpreter);
@@ -304,11 +286,8 @@ int main(int argc, char* argv[])
         float numDetections;
         
         const TfLiteTensor* output_tensor[4];
-        for (int i = 0; i < oCount; i++) 
-            output_tensor[i] = TfLiteInterpreterGetOutputTensor(interpreter, i);
-        /*int odims = TfLiteTensorNumDims(output_tensor);
-        int odimsize = TfLiteTensorDim(output_tensor,0),
-            odimsize2 = TfLiteTensorDim(output_tensor, 1);*/       
+        for (int i = 0; i < oCount; i++)
+            output_tensor[i] = TfLiteInterpreterGetOutputTensor(interpreter, i);      
         numDetections = *(float*)TfLiteTensorData(output_tensor[3]);
         scores = (float*)TfLiteTensorData(output_tensor[2]);
         types = (float*)TfLiteTensorData(output_tensor[1]);
@@ -346,25 +325,18 @@ int main(int argc, char* argv[])
 #endif 
         free(imgbuf);
         char buffer[8192];
-        //sprintf_s(buffer3, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d }", msgsize, img.cols, img.rows);
-        sprintf_s(buffer, 2047, "{ \"size\" : %d, \"width\" : %d, \"height\" : %d ,\"result\":", msgsize, width, height);
+        sprintf_s(buffer, 2047, "{\"size\":%d,\"result\":", msgsize);
         int outsize = strlen(buffer);
         
-        //char tid[256];
         string outmessage = buffer;
-        //outsize = outmessage.length();
-        //cerr << "Output size: " << outsize << endl;
-        //_write(1, &outsize, 4);
-        //_write(1, buffer3, outsize);
         int finResult = 0;
-        //Sleep(200);
-        //cerr << numDetections << endl;
+
         for (int i = 0; i < numDetections; i++)
-            if (scores[i] > 0.4) {
-                if ((int)types[i] == type)
+            if (scores[i] > cutLevel) {
+                if ((int)types[i] == type) {
                     finResult = 1;
-                //sprintf_s(buffer, 2047, "%d,", (int) types[i]);
-                //outmessage += buffer;
+                    break;
+                }
                 /*printf("Type %f - Score %f\n", types[i], scores[i]);
                 printf("  Box: %f,%f - %f,%f\n", boxes[i * 4], boxes[i * 4 + 1], 
                     boxes[i * 4 + 2], boxes[i * 4 + 3]);
@@ -380,27 +352,9 @@ int main(int argc, char* argv[])
         outmessage += buffer;
         outsize = outmessage.length();
         cerr << "Result: " << finResult << endl;
-       /* HANDLE hFile = CreateFile("c:\\temp\\message.out.json", // Filename
-            GENERIC_WRITE,    // Desired access
-            FILE_SHARE_WRITE, // Share flags
-            NULL,             // Security Attributes
-            CREATE_ALWAYS,      // Creation Disposition
-            0,                // Flags and Attributes
-            NULL);
-        WriteFile(hFile,              // Handle
-            outmessage.c_str(), // Data to be written
-            outsize,                 // Size of data, in bytes
-            &dwRet,             // Number of bytes written
-            NULL);             // OVERLAPPED pointer
-        CloseHandle(hFile);*/
+
         _write(1, &outsize, 4);
         _write(1, outmessage.c_str(), outsize);
-        //cvtColor(dst, img, CV_RGB2BGR);
-        //string outname = url + ".out.png";
-        //cvSaveImage(outname.c_str(), dst);
-        //imwrite(outname.c_str(), *img);
-        //cvtColor(dst, dst, CV_RGB2BGR);
-        //imwrite((url + ".dbg.png").c_str(), dst);
 
         // deinit
 #ifdef _TFLITE

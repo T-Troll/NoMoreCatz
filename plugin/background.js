@@ -1,4 +1,5 @@
 const BLOCK_TYPE = 16;
+const CUT_LEVEL = 0.3;
 
 class BackgroundProcessing {
 
@@ -38,12 +39,15 @@ class BackgroundProcessing {
     const startTime = performance.now();
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
+    imgElement.width = imgElement.height = 320;
+    context.width = imgElement.width;
+    context.geight = imgElement.height;
     context.drawImage(imgElement, 0, 0);
     var imgData = context.getImageData(0,0,imgElement.width, imgElement.height).data;
     var predictions;
 
     chrome.runtime.sendNativeMessage('com.ttroll.nomorecatz',
-    { type: BLOCK_TYPE, width: imgElement.width, height: imgElement.height, data : imgData },
+    { type: BLOCK_TYPE, cut: CUT_LEVEL, width: imgElement.width, height: imgElement.height, data : imgData },
 	function(message) {
                 //console.log(metaTags);
                 const totalTime = Math.floor(performance.now() - startTime);
@@ -56,8 +60,6 @@ class BackgroundProcessing {
       		});
   	});
     predictions = chrome.extension.getURL("/nocats.png");
-    //const totalTime = Math.floor(performance.now() - startTime);
-    //console.log(`Prediction done in ${totalTime}ms:`, predictions);
     return predictions;
   }
 
