@@ -14,7 +14,7 @@ NoMoreCatz is an AI-based Chromium plugin, blocking pictures with cats on it.
 - Enable "Developer mode" switch on Extension page.
 - Three buttons appears, press "Load Unpacked" one.
 - Select folder "plugin" inside the folder you unpack archive and press "Open Folder".
-- Extention named "NoMoreCatz" shoild be added into extensions list.
+- Extention named "NoMoreCatz" should be added into extensions list.
 - At the NoMoreCatz extension card, find the field "ID:" followed with the text string. Copy it or write it down.
 - Open command line at the folder you unpack archive.
 - Issue command `nomorecatz -register <ID string you write down from extenstion card>`
