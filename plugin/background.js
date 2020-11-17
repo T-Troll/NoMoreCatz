@@ -1,5 +1,5 @@
 const BLOCK_TYPE = 16;
-const CUT_LEVEL = 0.3;
+const CUT_LEVEL = 0.41;
 
 class BackgroundProcessing {
 
@@ -35,16 +35,16 @@ class BackgroundProcessing {
   }
 
   async predict(imgElement, metaTags) {
-    console.log('Predicting...');
+    var predictions; 
+    console.log(`Predicting ${imgElement.src}...`);
     const startTime = performance.now();
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
     imgElement.width = imgElement.height = 320;
-    context.width = imgElement.width;
-    context.geight = imgElement.height;
+    //context.width = imgElement.width;
+    //context.geight = imgElement.height;
     context.drawImage(imgElement, 0, 0);
     var imgData = context.getImageData(0,0,imgElement.width, imgElement.height).data;
-    var predictions;
 
     chrome.runtime.sendNativeMessage('com.ttroll.nomorecatz',
     { type: BLOCK_TYPE, cut: CUT_LEVEL, width: imgElement.width, height: imgElement.height, data : imgData },
@@ -54,10 +54,12 @@ class BackgroundProcessing {
                 console.log(`Prediction done in ${totalTime}ms:`, message.result);
     		//console.log(message);
 		metaTags.result = message.result;
-		chrome.tabs.sendMessage(metaTags.tabId, {
+                if (message.result == 1) {
+		  chrome.tabs.sendMessage(metaTags.tabId, {
       		    action: 'IMAGE_PROCESSED',
       		    payload: metaTags,
-      		});
+      		  });
+                }
   	});
     predictions = chrome.extension.getURL("/nocats.png");
     return predictions;

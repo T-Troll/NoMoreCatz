@@ -74,7 +74,7 @@ BYTE* ParseJson(char* json, unsigned *width, unsigned* height, unsigned *type, f
 int main(int argc, char* argv[])
 {
     _setmode(_fileno(stdin), _O_BINARY);
-    cerr << "NoMoreCatZ v0.2.1\n";
+    cerr << "NoMoreCatZ v0.3.0\n";
     //cout << "Tensorflow " << TF_Version() << endl;
     if (argc < 2) {
         cout << "Usage:" << endl
