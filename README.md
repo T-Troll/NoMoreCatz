@@ -32,7 +32,7 @@ If cat detected on the picture, plugin block it and replace to dummy picture.<br
 ### Under the hood
 Depends of building variant, host application uses full TensorFlow 2.3 (you need to download it sepatarely, it's HUGE) or TensorFlowLite to check picture data against trained model.<br>
 For Tensorlow, it uses faster-rcnn model trained by Coco, Cat vs Dogs and Pets datasets.<br>
-For TensorflowLite, SSD-resnet model, trained by Coco dataset used.
+For TensorflowLite, SSD-resnet model, trained by Coco dataset used. Unfortunately, it's not possible to train model using other datasets - TensorFlowLite conversion broken beyond repair in Tensorflow 2.3, so i need to wait until 2.4 release (i hope they fix it). 
 You can changed blocking type into `/plugin/background.js` script - it have variable for it at the beginning. Don't forget to reload extenstion after you modify it.<br>
 Also, you can alter `CUT_LEVEL` variable into the same script - it defines minimal probability acceptable as a positive result. Value is from 0.0 (any) to 1.0 (only 100%).
 
