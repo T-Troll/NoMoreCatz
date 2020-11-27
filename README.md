@@ -34,7 +34,7 @@ Depends of building variant, host application uses full TensorFlow 2.3 (you need
 For Tensorlow, it uses faster-rcnn model trained by Coco, Cat vs Dogs and Pets datasets.<br>
 For TensorflowLite, SSD-resnet model, trained by Coco dataset used. Unfortunately, it's not possible to train model using other datasets - TensorFlowLite conversion broken beyond repair in Tensorflow 2.3, so i need to wait until 2.4 release (i hope they fix it).<br> 
 You can chang blocking type into `/plugin/background.js` script - it have variable for it at the beginning. Don't forget to reload extenstion after you modify it.<br>
-Also, you can alter `CUT_LEVEL` variable into the same script - it defines minimal probability acceptable as a positive result. Value is from 0.0 (any) to 1.0 (only 100%).
+Also, you can alter `CUT_LEVEL` variable into the same script - it defines minimal probability acceptable as a positive result. Value is between 0.0 (any) amd 1.0 (only 100%).
 
 ## Known issues
 - AI blocking is about probability, so it can block approximately 90% of images (for full TensorFlow) or even 70% (for TensorflowLite). However, some images can be blocked by mistake (about 3% probability, depends on cut level).
